@@ -1271,7 +1271,7 @@
                     return;
                 }
 
-                // Проверяем, клик по сегменту маршрута
+                // Проверяем, клик по сегменту маршрута (линия или круг)
                 const segmentFeature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
                     return feature.get('segmentData') ? feature : null;
                 });
@@ -1285,25 +1285,17 @@
 
                 // Проверяем, попали ли в зону риска (круг)
                 const riskFeature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
-                    return feature.get('risk') ? feature : null;
+                    return feature.get('risk') && !feature.get('segmentData') ? feature : null;
                 });
 
                 if (riskFeature) {
-                    const risk = riskFeature.get('risk');
                     const segmentIndex = riskFeature.get('segmentIndex');
-                    const distance = riskFeature.get('distance');
                     
-                    // Если это круг маршрута - показываем детальную информацию
+                    // Если это круг маршрута - показываем модальное окно
                     if (segmentIndex !== undefined && routeSegments[segmentIndex]) {
                         const seg = routeSegments[segmentIndex];
-                        showSegmentPopup(coords, seg, segmentIndex);
-                    } else {
-                        // Старые зоны риска (не маршрут)
-                        const wind = riskFeature.get('wind') || '—';
-                        const altitude = riskFeature.get('altitude') || '—';
-                        showRiskPopup(coords, risk, wind, altitude);
+                        showSegmentModal(seg, segmentIndex);
                     }
-                    openPanel();
                     return;
                 }
 
