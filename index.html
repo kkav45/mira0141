@@ -659,7 +659,7 @@
         .toast.info i { color: #3182ce; }
 
         /* Кнопка геолокации */
-        .geo-btn {
+        .geo-btn, .map-btn {
             position: fixed;
             top: 20px;
             right: 20px;
@@ -675,8 +675,12 @@
             z-index: 1000;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
+        .geo-btn { right: 20px; }
         .geo-btn:active { transform: scale(0.95); }
         .geo-btn i { color: #667eea; }
 
@@ -801,6 +805,25 @@
     <!-- Карта -->
     <div id="map"></div>
 
+    <!-- Переключатель слоёв данных (левый верхний угол) -->
+    <div id="layerSelector" style="position: absolute; top: 20px; left: 20px; z-index: 1000; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 12px 16px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); display: none;">
+        <div style="font-size: 11px; font-weight: 600; color: #2d3748; margin-bottom: 8px;">
+            <i class="fas fa-layer-group"></i> Слой данных
+        </div>
+        <select id="weatherLayerSelect" onchange="changeWeatherLayer()" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.15); background: rgba(255,255,255,0.9); font-size: 11px; color: #2d3748; cursor: pointer; min-width: 180px;">
+            <option value="risk">🎯 Интегральный риск</option>
+            <option value="wind">💨 Ветер (по высотам)</option>
+            <option value="precip">🌧️ Осадки</option>
+            <option value="temp">🌡️ Температура</option>
+            <option value="pressure">📊 Давление</option>
+            <option value="humidity">💧 Влажность</option>
+            <option value="turbulence">🌪️ Турбулентность</option>
+        </select>
+        <div id="layerLegend" style="margin-top: 6px; font-size: 9px; color: rgba(0,0,0,0.6);">
+            🟢 Низкий 🟠 Средний 🔴 Высокий
+        </div>
+    </div>
+
     <!-- Кнопка геолокации -->
     <button class="geo-btn" onclick="getCurrentLocation()">
         <i class="fas fa-location-crosshairs"></i>
@@ -818,14 +841,14 @@
             <i class="fas fa-chevron-up"></i>
             <span>Метео-панель</span>
         </div>
-        <i class="fas fa-chevron-down" style="color: rgba(255,255,255,0.5);"></i>
+        <i class="fas fa-chevron-down" id="panelToggleIcon" style="color: #38a169; font-size: 16px;"></i>
     </div>
 
     <!-- Нижнее меню -->
     <div class="bottom-panel">
         <div class="panel-header">
             <div class="panel-title">
-                <span>MIRA</span>
+                <span>Метео-обеспечение</span>
             </div>
             <div class="panel-handle"></div>
             <div class="panel-actions">
@@ -899,27 +922,6 @@
                             <span class="badge badge-ok" id="routeDistance">0 км</span>
                             <span class="badge badge-ok" id="routeFlightTime">0 мин</span>
                             <span class="badge" id="routeRiskLevel" style="background: rgba(56, 161, 105, 0.2); color: #276749;">Анализ...</span>
-                        </div>
-                        
-                        <!-- Переключатель слоёв данных -->
-                        <div style="border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px;">
-                            <div style="font-size: 11px; color: rgba(0,0,0,0.6); margin-bottom: 6px;">
-                                <i class="fas fa-layer-group"></i> <strong>Слой данных:</strong>
-                            </div>
-                            <div style="position: relative;">
-                                <select id="weatherLayerSelect" onchange="changeWeatherLayer()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.15); background: rgba(255,255,255,0.9); font-size: 12px; color: #2d3748; cursor: pointer;">
-                                    <option value="risk">🎯 Интегральный риск</option>
-                                    <option value="wind">💨 Ветер (по высотам)</option>
-                                    <option value="precip">🌧️ Осадки</option>
-                                    <option value="temp">🌡️ Температура</option>
-                                    <option value="pressure">📊 Давление</option>
-                                    <option value="humidity">💧 Влажность</option>
-                                    <option value="turbulence">🌪️ Турбулентность</option>
-                                </select>
-                            </div>
-                            <div id="layerLegend" style="margin-top: 8px; font-size: 10px; color: rgba(0,0,0,0.5);">
-                                <!-- Легенда обновляется динамически -->
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1667,6 +1669,12 @@
             const source = routeOverlay.getSource();
             source.clear();
 
+            // Показываем переключатель слоёв
+            const layerSelector = document.getElementById('layerSelector');
+            if (layerSelector) {
+                layerSelector.style.display = 'block';
+            }
+
             // Создаём плавную кривую через все точки (Catmull-Rom spline)
             const smoothPath = createSmoothPath(routePoints, 20);
             routePath = smoothPath;
@@ -1769,11 +1777,17 @@
             document.getElementById('routeRiskLevel').textContent = 'Анализ...';
             document.getElementById('routeRiskLevel').style.background = 'rgba(56, 161, 105, 0.2)';
             document.getElementById('routeRiskLevel').style.color = '#276749';
-            
+
             // Удаляем легенду
             const existingLegend = document.getElementById('routeLegend');
             if (existingLegend) existingLegend.remove();
-            
+
+            // Скрываем переключатель слоёв
+            const layerSelector = document.getElementById('layerSelector');
+            if (layerSelector) {
+                layerSelector.style.display = 'none';
+            }
+
             showToast('Маршрут очищен', 'info');
         }
 
@@ -3710,25 +3724,36 @@
         function togglePanel() {
             const panel = document.querySelector('.bottom-panel');
             const toggle = document.getElementById('panelToggle');
-            
+            const toggleIcon = document.getElementById('panelToggleIcon');
+
             isPanelHidden = !isPanelHidden;
-            
+
             if (isPanelHidden) {
                 panel.classList.add('hidden');
                 toggle.classList.remove('hidden');
+                // Зелёная стрелка вниз при закрытой панели
+                toggleIcon.className = 'fas fa-chevron-down';
+                toggleIcon.style.color = '#38a169';
             } else {
                 panel.classList.remove('hidden');
                 toggle.classList.add('hidden');
+                // Красный X при открытой панели
+                toggleIcon.className = 'fas fa-times';
+                toggleIcon.style.color = '#e53e3e';
             }
         }
 
         function openPanel() {
             const panel = document.querySelector('.bottom-panel');
             const toggle = document.getElementById('panelToggle');
-            
+            const toggleIcon = document.getElementById('panelToggleIcon');
+
             isPanelHidden = false;
             panel.classList.remove('hidden');
             toggle.classList.add('hidden');
+            // Красный X при открытой панели
+            toggleIcon.className = 'fas fa-times';
+            toggleIcon.style.color = '#e53e3e';
         }
 
         // ==================== НАСТРОЙКИ ====================
