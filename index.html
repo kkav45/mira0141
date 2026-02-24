@@ -891,10 +891,31 @@
                             <div><strong>Точка A:</strong> <span id="routePointA">—</span></div>
                             <div><strong>Точка B:</strong> <span id="routePointB">—</span></div>
                         </div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
                             <span class="badge badge-ok" id="routeDistance">0 км</span>
                             <span class="badge badge-ok" id="routeFlightTime">0 мин</span>
                             <span class="badge" id="routeRiskLevel" style="background: rgba(56, 161, 105, 0.2); color: #276749;">Анализ...</span>
+                        </div>
+                        
+                        <!-- Переключатель слоёв данных -->
+                        <div style="border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px;">
+                            <div style="font-size: 11px; color: rgba(0,0,0,0.6); margin-bottom: 6px;">
+                                <i class="fas fa-layer-group"></i> <strong>Слой данных:</strong>
+                            </div>
+                            <div style="position: relative;">
+                                <select id="weatherLayerSelect" onchange="changeWeatherLayer()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.15); background: rgba(255,255,255,0.9); font-size: 12px; color: #2d3748; cursor: pointer;">
+                                    <option value="risk">🎯 Интегральный риск</option>
+                                    <option value="wind">💨 Ветер (по высотам)</option>
+                                    <option value="precip">🌧️ Осадки</option>
+                                    <option value="temp">🌡️ Температура</option>
+                                    <option value="pressure">📊 Давление</option>
+                                    <option value="humidity">💧 Влажность</option>
+                                    <option value="turbulence">🌪️ Турбулентность</option>
+                                </select>
+                            </div>
+                            <div id="layerLegend" style="margin-top: 8px; font-size: 10px; color: rgba(0,0,0,0.5);">
+                                <!-- Легенда обновляется динамически -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1177,6 +1198,7 @@
         let isRouteMode = false; // Режим построения маршрута
         let showRiskZones = true; // Отображение зон риска
         let currentSegmentIndex = -1; // Текущий сегмент для модального окна
+        let currentWeatherLayer = 'risk'; // Текущий слой данных (risk/wind/precip/temp/pressure/humidity/turbulence)
         let thresholds = {
             windGround: 10,
             windAlt: 15,
@@ -1992,6 +2014,65 @@
 
         function closeSegmentModal() {
             document.getElementById('segmentModal').classList.remove('active');
+        }
+
+        function changeWeatherLayer() {
+            const select = document.getElementById('weatherLayerSelect');
+            currentWeatherLayer = select.value;
+            updateLayerLegend();
+            renderRiskZones();
+        }
+
+        function updateLayerLegend() {
+            const legend = document.getElementById('layerLegend');
+            const legends = {
+                risk: '🟢 Низкий 🟠 Средний 🔴 Высокий',
+                wind: '🟢 0-10 м/с 🟠 10-15 м/с 🔴 >15 м/с',
+                precip: '🟢 0-0.5 мм/ч 🟠 0.5-1.4 мм/ч 🔴 >1.4 мм/ч',
+                temp: '🔵 <-5°C 🟢 -5...+25°C 🔴 >+30°C',
+                pressure: '🔴 <720 🟠 720-740 🟢 740-770 🔴 >770 мм рт.ст.',
+                humidity: '🟢 30-70% 🟠 70-85% 🔴 >85%',
+                turbulence: '🟢 0-3 🟠 4-6 🔴 >6 баллов'
+            };
+            legend.textContent = legends[currentWeatherLayer] || '';
+        }
+
+        function getLayerColor(value, layer) {
+            const colors = {
+                risk: { low: 'rgba(56, 161, 105, 0.85)', medium: 'rgba(237, 137, 54, 0.85)', high: 'rgba(229, 62, 62, 0.85)' },
+                wind: { low: 'rgba(56, 161, 105, 0.85)', medium: 'rgba(237, 137, 54, 0.85)', high: 'rgba(229, 62, 62, 0.85)' },
+                precip: { low: 'rgba(56, 161, 105, 0.85)', medium: 'rgba(237, 137, 54, 0.85)', high: 'rgba(229, 62, 62, 0.85)' },
+                temp: { low: 'rgba(66, 153, 225, 0.85)', medium: 'rgba(56, 161, 105, 0.85)', high: 'rgba(229, 62, 62, 0.85)' },
+                pressure: { low: 'rgba(229, 62, 62, 0.85)', medium: 'rgba(237, 137, 54, 0.85)', high: 'rgba(56, 161, 105, 0.85)' },
+                humidity: { low: 'rgba(56, 161, 105, 0.85)', medium: 'rgba(237, 137, 54, 0.85)', high: 'rgba(229, 62, 62, 0.85)' },
+                turbulence: { low: 'rgba(56, 161, 105, 0.85)', medium: 'rgba(237, 137, 54, 0.85)', high: 'rgba(229, 62, 62, 0.85)' }
+            };
+            return colors[layer] || colors.risk;
+        }
+
+        function getLayerValue(segment, layer) {
+            switch(layer) {
+                case 'risk': return segment.risk;
+                case 'wind': return parseFloat(segment.avgWind);
+                case 'precip': return parseFloat(segment.precip);
+                case 'temp': return parseFloat(segment.avgTemp);
+                case 'pressure': return segment.heightAnalysis[0] ? parseFloat(segment.heightAnalysis[0].pressure) : 760;
+                case 'humidity': return segment.heightAnalysis[0] ? parseFloat(segment.heightAnalysis[0].rh) : 50;
+                case 'turbulence': return parseFloat(segment.avgTurbulence);
+                default: return 'low';
+            }
+        }
+
+        function getLayerRisk(value, layer) {
+            switch(layer) {
+                case 'wind': return value <= 10 ? 'low' : value <= 15 ? 'medium' : 'high';
+                case 'precip': return value <= 0.5 ? 'low' : value <= 1.4 ? 'medium' : 'high';
+                case 'temp': return value < -5 || value > 30 ? 'high' : value >= -5 && value <= 25 ? 'low' : 'medium';
+                case 'pressure': return value < 720 || value > 770 ? 'high' : value < 740 || value > 760 ? 'medium' : 'low';
+                case 'humidity': return value <= 70 ? 'low' : value <= 85 ? 'medium' : 'high';
+                case 'turbulence': return value <= 3 ? 'low' : value <= 6 ? 'medium' : 'high';
+                default: return value;
+            }
         }
 
         function previousSegment() {
@@ -3139,29 +3220,41 @@
             // Если есть маршрут - рисуем круги на сегментах
             if (routeSegments.length > 0) {
                 routeSegments.forEach((seg, index) => {
-                    const risk = seg.risk;
+                    // Определяем риск/значение для текущего слоя
+                    let risk, radius, value;
+                    
+                    if (currentWeatherLayer === 'risk') {
+                        risk = seg.risk;
+                        radius = risk === 'high' ? 3500 : risk === 'medium' ? 3000 : 2500;
+                    } else {
+                        value = getLayerValue(seg, currentWeatherLayer);
+                        risk = getLayerRisk(value, currentWeatherLayer);
+                        radius = risk === 'high' ? 3500 : risk === 'medium' ? 3000 : 2500;
+                    }
+                    
                     const coords = ol.proj.fromLonLat([seg.point.lon, seg.point.lat]);
-
-                    // Радиус зависит от риска (увеличен для полного перекрытия сегментов 2км)
-                    let radius = risk === 'high' ? 3500 : risk === 'medium' ? 3000 : 2500;
 
                     const feature = new ol.Feature({
                         geometry: new ol.geom.Circle(coords, radius),
                         risk: risk,
                         segmentIndex: index,
-                        distance: seg.distance
+                        distance: seg.distance,
+                        layer: currentWeatherLayer,
+                        value: value
                     });
 
                     let fillColor, strokeColor;
+                    const layerColors = getLayerColor(value, currentWeatherLayer);
+                    
                     if (risk === 'high') {
-                        fillColor = 'rgba(229, 62, 62, 0.20)';
-                        strokeColor = 'rgba(229, 62, 62, 0.6)';
+                        fillColor = layerColors.high;
+                        strokeColor = layerColors.high.replace('0.85', '0.6');
                     } else if (risk === 'medium') {
-                        fillColor = 'rgba(237, 137, 54, 0.20)';
-                        strokeColor = 'rgba(237, 137, 54, 0.6)';
+                        fillColor = layerColors.medium;
+                        strokeColor = layerColors.medium.replace('0.85', '0.6');
                     } else {
-                        fillColor = 'rgba(56, 161, 105, 0.20)';
-                        strokeColor = 'rgba(56, 161, 105, 0.6)';
+                        fillColor = layerColors.low;
+                        strokeColor = layerColors.low.replace('0.85', '0.6');
                     }
 
                     feature.setStyle(new ol.style.Style({
