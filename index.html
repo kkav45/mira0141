@@ -1813,21 +1813,28 @@
             const source = routeOverlay.getSource();
             source.clear();
 
-            // Рисуем плавную линию маршрута с цветными сегментами
+            // Рисуем непрерывную цветовую ленту вдоль маршрута
             for (let i = 0; i < routeSegments.length; i++) {
                 const seg = routeSegments[i];
-
-                // Цвет сегмента в зависимости от риска
-                let segmentColor, segmentWidth;
-                if (seg.risk === 'high') {
-                    segmentColor = 'rgba(229, 62, 62, 0.85)';
-                    segmentWidth = 8;
-                } else if (seg.risk === 'medium') {
-                    segmentColor = 'rgba(237, 137, 54, 0.85)';
-                    segmentWidth = 7;
+                
+                // Определяем цвет для текущего слоя
+                let segmentColor, segmentWidth, value, risk;
+                
+                if (currentWeatherLayer === 'risk') {
+                    risk = seg.risk;
+                    const colors = {
+                        high: 'rgba(229, 62, 62, 0.9)',
+                        medium: 'rgba(237, 137, 54, 0.9)',
+                        low: 'rgba(56, 161, 105, 0.9)'
+                    };
+                    segmentColor = colors[risk];
+                    segmentWidth = 10;
                 } else {
-                    segmentColor = 'rgba(56, 161, 105, 0.85)';
-                    segmentWidth = 6;
+                    value = getLayerValue(seg, currentWeatherLayer);
+                    risk = getLayerRisk(value, currentWeatherLayer);
+                    const layerColors = getLayerColor(value, currentWeatherLayer);
+                    segmentColor = risk === 'high' ? layerColors.high : risk === 'medium' ? layerColors.medium : layerColors.low;
+                    segmentWidth = 10;
                 }
 
                 // Получаем координаты начала и конца сегмента из плавной кривой
@@ -1867,12 +1874,12 @@
 
             // Добавляем маркеры для опасных зон
             routeSegments.forEach((seg, index) => {
-                if (seg.risk === 'high' || seg.risk === 'medium') {
+                if (seg.risk === 'high' || (currentWeatherLayer !== 'risk' && getLayerRisk(getLayerValue(seg, currentWeatherLayer), currentWeatherLayer) === 'high')) {
                     const coords = ol.proj.fromLonLat([seg.point.lon, seg.point.lat]);
                     const markerFeature = new ol.Feature({ geometry: new ol.geom.Point(coords) });
 
-                    const markerColor = seg.risk === 'high' ? '#e53e3e' : '#ed8936';
-                    const markerSize = seg.risk === 'high' ? 6 : 4;
+                    const markerColor = '#e53e3e';
+                    const markerSize = 6;
 
                     markerFeature.setStyle(new ol.style.Style({
                         image: new ol.style.Circle({
