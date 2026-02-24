@@ -1042,7 +1042,17 @@
         <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
                 <h3><i class="fas fa-route"></i> Сегмент маршрута <span id="segmentNumber"></span></h3>
-                <button class="close-modal" onclick="closeSegmentModal()">&times;</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="panel-btn" onclick="previousSegment()" title="Предыдущий сегмент" style="width: 36px; height: 36px;">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="close-modal" onclick="closeSegmentModal()" style="width: 36px; height: 36px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <button class="panel-btn" onclick="nextSegment()" title="Следующий сегмент" style="width: 36px; height: 36px;">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                 <!-- Основная информация -->
@@ -1122,6 +1132,41 @@
     </div>
 
     <!-- Модальное окно настроек -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Настройки порогов</h3>
+                <button class="close-modal" onclick="closeSettings()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-row">
+                    <label>Ветер у земли (м/с)</label>
+                    <input type="number" id="thresholdWindGround" value="10" step="0.5">
+                </div>
+                <div class="setting-row">
+                    <label>Ветер на высоте (м/с)</label>
+                    <input type="number" id="thresholdWindAlt" value="15" step="0.5">
+                </div>
+                <div class="setting-row">
+                    <label>Осадки (мм/ч)</label>
+                    <input type="number" id="thresholdPrecip" value="1.4" step="0.1">
+                </div>
+                <div class="setting-row">
+                    <label>Видимость (км)</label>
+                    <input type="number" id="thresholdVisibility" value="5" step="0.5">
+                </div>
+                <div class="setting-row">
+                    <label>T-Td для тумана (°C)</label>
+                    <input type="number" id="thresholdTempDewpoint" value="2" step="0.5">
+                </div>
+                <button class="action-btn" onclick="saveSettings()" style="margin-top: 20px;">
+                    <i class="fas fa-save"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
         let map, markerOverlay, popupOverlay, popupElement;
         let meteorologicalData = [];
@@ -1132,6 +1177,7 @@
         let routePath = null; // Плавная кривая маршрута
         let isRouteMode = false; // Режим построения маршрута
         let showRiskZones = true; // Отображение зон риска
+        let currentSegmentIndex = -1; // Текущий сегмент для модального окна
         let thresholds = {
             windGround: 10,
             windAlt: 15,
@@ -1889,6 +1935,7 @@
         }
 
         function showSegmentModal(seg, index) {
+            currentSegmentIndex = index;
             const riskConfig = {
                 high: { text: 'ВЫСОКИЙ', color: '#e53e3e', badge: 'badge-danger' },
                 medium: { text: 'СРЕДНИЙ', color: '#ed8936', badge: 'badge-warn' },
@@ -1896,7 +1943,7 @@
             };
 
             const config = riskConfig[seg.risk];
-            document.getElementById('segmentNumber').textContent = '№' + (index + 1);
+            document.getElementById('segmentNumber').textContent = '№' + (index + 1) + ' из ' + routeSegments.length;
             document.getElementById('segmentCoords').textContent = seg.point.lat.toFixed(4) + ', ' + seg.point.lon.toFixed(4);
             document.getElementById('segmentDistance').textContent = Math.round(seg.distance * 10) / 10 + ' км';
             document.getElementById('segmentPrecip').textContent = Math.round(seg.precip * 10) / 10 + ' мм/ч';
@@ -1948,9 +1995,34 @@
             document.getElementById('segmentModal').classList.remove('active');
         }
 
+        function previousSegment() {
+            if (currentSegmentIndex > 0) {
+                currentSegmentIndex--;
+                showSegmentModal(routeSegments[currentSegmentIndex], currentSegmentIndex);
+            }
+        }
+
+        function nextSegment() {
+            if (currentSegmentIndex < routeSegments.length - 1) {
+                currentSegmentIndex++;
+                showSegmentModal(routeSegments[currentSegmentIndex], currentSegmentIndex);
+            }
+        }
+
         // Закрытие модального окна по клику вне
         document.getElementById('segmentModal').addEventListener('click', function(e) {
             if (e.target === this) closeSegmentModal();
+        });
+
+        // Закрытие по Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeSegmentModal();
+            } else if (e.key === 'ArrowLeft' && document.getElementById('segmentModal').classList.contains('active')) {
+                previousSegment();
+            } else if (e.key === 'ArrowRight' && document.getElementById('segmentModal').classList.contains('active')) {
+                nextSegment();
+            }
         });
 
         function addRouteLegend() {
