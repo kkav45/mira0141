@@ -847,6 +847,7 @@
         <!-- Вкладки -->
         <div class="tabs">
             <div class="tab active" onclick="switchTab('overview')">Обзор</div>
+            <div class="tab" onclick="switchTab('report')">Отчёт</div>
             <div class="tab" onclick="switchTab('charts')">Графики</div>
             <div class="tab" onclick="switchTab('details')">Детали</div>
         </div>
@@ -979,7 +980,10 @@
                     </div>
                     <div class="flight-windows" id="flightWindows"></div>
                 </div>
+            </div>
 
+            <!-- Вкладка: Отчёт -->
+            <div class="tab-content" id="tab-report">
                 <!-- Рекомендации и выводы -->
                 <div class="recommendations-block" id="recommendationsBlock">
                     <div class="recommendations-header">
@@ -1595,7 +1599,7 @@
                         distanceFromStart: ratio * totalDistance
                     };
                 } else {
-                    // Если нет плавного пути, интерполируем по точкам
+                    // Если нет пл��вного пути, интерполируем по точкам
                     const segmentIndex = Math.min(Math.floor(ratio * routePoints.length), routePoints.length - 2);
                     const t = (ratio * routePoints.length) - segmentIndex;
                     const p1 = routePoints[segmentIndex];
