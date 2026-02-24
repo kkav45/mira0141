@@ -1599,7 +1599,7 @@
                         distanceFromStart: ratio * totalDistance
                     };
                 } else {
-                    // Если нет пл��вного пути, интерполируем по точкам
+                    // Если нет пл����вного пути, интерполируем по точкам
                     const segmentIndex = Math.min(Math.floor(ratio * routePoints.length), routePoints.length - 2);
                     const t = (ratio * routePoints.length) - segmentIndex;
                     const p1 = routePoints[segmentIndex];
@@ -3220,99 +3220,51 @@
 
             if (!showRiskZones) return;
 
-            // Если есть маршрут - рисуем круги на сегментах
+            // Если есть маршрут - НЕ рисуем круги, только лента в drawRouteSegments()
             if (routeSegments.length > 0) {
-                routeSegments.forEach((seg, index) => {
-                    // Определяем риск/значение для текущего слоя
-                    let risk, radius, value;
-                    
-                    if (currentWeatherLayer === 'risk') {
-                        risk = seg.risk;
-                        radius = risk === 'high' ? 3500 : risk === 'medium' ? 3000 : 2500;
-                    } else {
-                        value = getLayerValue(seg, currentWeatherLayer);
-                        risk = getLayerRisk(value, currentWeatherLayer);
-                        radius = risk === 'high' ? 3500 : risk === 'medium' ? 3000 : 2500;
-                    }
-                    
-                    const coords = ol.proj.fromLonLat([seg.point.lon, seg.point.lat]);
-
-                    const feature = new ol.Feature({
-                        geometry: new ol.geom.Circle(coords, radius),
-                        risk: risk,
-                        segmentIndex: index,
-                        distance: seg.distance,
-                        layer: currentWeatherLayer,
-                        value: value
-                    });
-
-                    let fillColor, strokeColor;
-                    const layerColors = getLayerColor(value, currentWeatherLayer);
-                    
-                    if (risk === 'high') {
-                        fillColor = layerColors.high;
-                        strokeColor = layerColors.high.replace('0.85', '0.6');
-                    } else if (risk === 'medium') {
-                        fillColor = layerColors.medium;
-                        strokeColor = layerColors.medium.replace('0.85', '0.6');
-                    } else {
-                        fillColor = layerColors.low;
-                        strokeColor = layerColors.low.replace('0.85', '0.6');
-                    }
-
-                    feature.setStyle(new ol.style.Style({
-                        fill: new ol.style.Fill({ color: fillColor }),
-                        stroke: new ol.style.Stroke({
-                            color: strokeColor,
-                            width: 2,
-                            lineDash: [5, 5]
-                        })
-                    }));
-
-                    source.addFeature(feature);
-                });
-            } else {
-                // Если нет маршрута - рисуем вокруг центра карты
-                const center = map.getView().getCenter();
-                const centerLonLat = ol.proj.toLonLat(center);
-                const current = meteorologicalData[0];
-
-                const zones = generateRiskZones(centerLonLat[1], centerLonLat[0], current);
-
-                zones.forEach(zone => {
-                    const feature = new ol.Feature({
-                        geometry: new ol.geom.Circle(
-                            ol.proj.fromLonLat([zone.lon, zone.lat]),
-                            zone.radius
-                        ),
-                        risk: zone.risk,
-                        wind: zone.wind,
-                        altitude: zone.altitude
-                    });
-
-                    let fillColor, strokeColor;
-                    if (zone.risk === 'high') {
-                        fillColor = 'rgba(229, 62, 62, 0.20)';
-                        strokeColor = 'rgba(229, 62, 62, 0.6)';
-                    } else if (zone.risk === 'medium') {
-                        fillColor = 'rgba(237, 137, 54, 0.20)';
-                        strokeColor = 'rgba(237, 137, 54, 0.6)';
-                    } else {
-                        fillColor = 'rgba(56, 161, 105, 0.20)';
-                        strokeColor = 'rgba(56, 161, 105, 0.6)';
-                    }
-
-                    feature.setStyle(new ol.style.Style({
-                        fill: new ol.style.Fill({ color: fillColor }),
-                        stroke: new ol.style.Stroke({
-                            color: strokeColor,
-                            width: 2
-                        })
-                    }));
-
-                    source.addFeature(feature);
-                });
+                return; // Выходим, круги не рисуем
             }
+            
+            // Если нет маршрута - рисуем вокруг центра карты
+            const center = map.getView().getCenter();
+            const centerLonLat = ol.proj.toLonLat(center);
+            const current = meteorologicalData[0];
+
+            const zones = generateRiskZones(centerLonLat[1], centerLonLat[0], current);
+
+            zones.forEach(zone => {
+                const feature = new ol.Feature({
+                    geometry: new ol.geom.Circle(
+                        ol.proj.fromLonLat([zone.lon, zone.lat]),
+                        zone.radius
+                    ),
+                    risk: zone.risk,
+                    wind: zone.wind,
+                    altitude: zone.altitude
+                });
+
+                let fillColor, strokeColor;
+                if (zone.risk === 'high') {
+                    fillColor = 'rgba(229, 62, 62, 0.20)';
+                    strokeColor = 'rgba(229, 62, 62, 0.6)';
+                } else if (zone.risk === 'medium') {
+                    fillColor = 'rgba(237, 137, 54, 0.20)';
+                    strokeColor = 'rgba(237, 137, 54, 0.6)';
+                } else {
+                    fillColor = 'rgba(56, 161, 105, 0.20)';
+                    strokeColor = 'rgba(56, 161, 105, 0.6)';
+                }
+
+                feature.setStyle(new ol.style.Style({
+                    fill: new ol.style.Fill({ color: fillColor }),
+                    stroke: new ol.style.Stroke({
+                        color: strokeColor,
+                        width: 2
+                    })
+                }));
+
+                source.addFeature(feature);
+            });
         }
 
         function generateRiskZones(centerLat, centerLon, currentData) {
