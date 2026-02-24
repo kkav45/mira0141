@@ -1695,26 +1695,33 @@
 
         function generateGridPoints(center, radiusKm, stepKm = 5) {
             const points = [];
-            const stepLat = stepKm / 111; // Шаг в градусах широты
-            const stepLon = stepKm / (111 * Math.cos(center.lat * Math.PI / 180)); // Шаг в градусах долготы
+            
+            // Шаг сетки в градусах (5 км)
+            const stepLat = stepKm / 111; // Шаг по широте
+            const stepLon = stepKm / (111 * Math.cos(center.lat * Math.PI / 180)); // Шаг по долготе
 
-            // Количество шагов в каждую сторону
-            const stepsLat = Math.ceil(radiusKm / stepKm);
-            const stepsLon = Math.ceil(radiusKm / stepKm);
+            // Количество шагов в каждую сторону от центра
+            const stepsLat = Math.floor(radiusKm / stepKm);
+            const stepsLon = Math.floor(radiusKm / stepKm);
 
             for (let i = -stepsLat; i <= stepsLat; i++) {
                 for (let j = -stepsLon; j <= stepsLon; j++) {
+                    // Координаты точки сетки
                     const lat = center.lat + (i * stepLat);
                     const lon = center.lon + (j * stepLon);
 
                     // Проверяем, попадает ли точка в круг радиусом radiusKm
-                    const distanceKm = Math.sqrt(
-                        Math.pow((lat - center.lat) * 111, 2) + 
-                        Math.pow((lon - center.lon) * 111 * Math.cos(center.lat * Math.PI / 180), 2)
-                    );
+                    const distanceLat = (lat - center.lat) * 111;
+                    const distanceLon = (lon - center.lon) * 111 * Math.cos(center.lat * Math.PI / 180);
+                    const distanceKm = Math.sqrt(distanceLat * distanceLat + distanceLon * distanceLon);
 
                     if (distanceKm <= radiusKm) {
-                        points.push({ lat, lon, gridIndex: { i, j } });
+                        points.push({ 
+                            lat, 
+                            lon, 
+                            gridIndex: { i, j },
+                            distanceFromCenter: distanceKm
+                        });
                     }
                 }
             }
